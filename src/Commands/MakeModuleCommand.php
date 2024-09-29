@@ -8,7 +8,7 @@ use Str;
 
 class MakeModuleCommand extends Command
 {
-    protected $signature = 'module:create {name} {--d}';
+    protected $signature = 'module:create {name} {--empty} {--d}';
     protected $description = 'Create a new module';
     protected Filesystem $filesystem;
     protected string $moduleDirectory;
@@ -175,6 +175,7 @@ class MakeModuleCommand extends Command
     {
         $moduleLower = strtolower($module);
         $tableName = Str::plural(Str::snake($moduleLower));
+        $tableFirst = ucfirst($tableName);
         $migrationName = date('Y_m_d_His') . "_create_{$tableName}_table.php";
         $migrationPath = base_path("app/Modules/$module/Database/Migrations/$migrationName");
 
@@ -185,7 +186,7 @@ class MakeModuleCommand extends Command
         use Illuminate\Database\Schema\Blueprint;
         use Illuminate\Support\Facades\Schema;
 
-        class Create{$module}Table extends Migration
+        class Create{$tableFirst}Table extends Migration
         {
             public function up()
             {
@@ -222,6 +223,33 @@ class MakeModuleCommand extends Command
         $this->info("File for $name created.");
     }
 
+    protected function createModel($name): void
+    {
+        $modelName = rtrim($name, 's');
+
+        $tableName = Str::plural(Str::snake($name));
+        $tableFirst = ucfirst($modelName);
+
+        $modelTemplate = <<<EOT
+        <?php
+
+        namespace App\\$this->moduleDirectory\\{$name}\Models;
+
+        use Illuminate\Database\Eloquent\Model;
+
+        class {$tableFirst} extends Model
+        {
+            protected \$table = '{$tableName}';
+
+            protected \$fillable = [
+                //
+            ];
+        }
+        EOT;
+
+        $this->filesystem->put(base_path("app/Modules/{$name}/Models/{$modelName}.php"), $modelTemplate);
+        $this->info("Base model for $name created.");
+    }
 
     public function handle(): void
     {
@@ -243,11 +271,14 @@ class MakeModuleCommand extends Command
         $this->makeDirectory($modulePath);
         $this->makeDirectory("$modulePath/Controllers");
         $this->makeDirectory("$modulePath/Controllers/Api");
-        $this->makeDirectory("$modulePath/Models");
         $this->makeDirectory("$modulePath/Routes");
         $this->makeDirectory("$modulePath/Providers");
-        $this->makeDirectory("$modulePath/Views");
-        $this->makeDirectory("$modulePath/Database/Migrations");
+
+        if (!$this->option('empty')) {
+            $this->makeDirectory("$modulePath/Models");
+            $this->makeDirectory("$modulePath/Database/Migrations");
+            $this->makeDirectory("$modulePath/Views");
+        }
 
         $this->createProvider($name);
 
@@ -257,9 +288,12 @@ class MakeModuleCommand extends Command
         $this->createRoutesFile($name);
         $this->createApiRoutesFile($name);
 
-        $this->createModuleStatusFile($name);
+        if (!$this->option('empty')) {
+            $this->createModel($name);
+            $this->createBaseMigration($name);
+        }
 
-        $this->createBaseMigration($name);
+        $this->createModuleStatusFile($name);
 
         $this->createModuleJson($name);
 

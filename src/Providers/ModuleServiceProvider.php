@@ -2,52 +2,32 @@
 
 namespace Smony\Module\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use Route;
 use Smony\Module\Commands\ListModulesCommand;
 use Smony\Module\Commands\MakeModuleCommand;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class ModuleServiceProvider extends ServiceProvider
+class ModuleServiceProvider extends PackageServiceProvider
 {
-    public function register()
+    public function configurePackage(Package $package): void
     {
-        $this->mergeConfigFrom(
-            __DIR__ . '/../Config/module.php', 'module'
-        );
-
-        $moduleDirectory = config('module.module_directory', 'Modules');
-
-        $enabledModulesFile = base_path('enabled_modules.json');
-        if (file_exists($enabledModulesFile)) {
-            $modules = json_decode(file_get_contents($enabledModulesFile), true);
-
-            foreach ($modules as $module => $enabled) {
-                if ($enabled) {
-                    $provider = "App\\{$moduleDirectory}\\$module\\Providers\\{$module}ServiceProvider";
-
-                    if (class_exists($provider)) {
-                        $this->app->register($provider);
-                    }
-                }
-            }
-        }
-
-        $this->commands([
-            MakeModuleCommand::class,
-            ListModulesCommand::class
-        ]);
+        $package
+            ->name('module')
+            ->hasConfigFile('module')
+            ->hasCommands([
+                MakeModuleCommand::class,
+                ListModulesCommand::class,
+            ]);
     }
 
-    public function boot()
+    public function packageBooted()
     {
-        $this->publishes([
-            __DIR__ . '/../Config/module.php' => config_path('module.php'),
-        ], 'config');
-
         $enabledModulesFile = base_path('enabled_modules.json');
+        $moduleDirectory = config('module.module_directory', 'Modules');
+
         if (file_exists($enabledModulesFile)) {
             $modules = json_decode(file_get_contents($enabledModulesFile), true);
-            $moduleDirectory = config('module.module_directory', 'Modules');
 
             foreach ($modules as $module => $enabled) {
                 if ($enabled) {
@@ -78,5 +58,4 @@ class ModuleServiceProvider extends ServiceProvider
                 });
         }
     }
-
 }
