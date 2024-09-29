@@ -1,0 +1,22 @@
+# Exclude Composer dependencies and lock file
+/vendor
+/composer.lock
+
+# Laravel caches and logs
+/storage
+/bootstrap/cache
+
+# Node modules if you're using frontend assets
+/node_modules
+
+# OS or Editor generated files
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# PHPUnit results and coverage reports
+/coverage/
+/phpunit-result.cache
+/phpunit.xml
+/phpunit.xml.dist
